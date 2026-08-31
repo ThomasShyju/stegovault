@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://stegovault.vercel.app/sitemap.xml
+Sitemap: https://stegovault-azure.vercel.app/sitemap.xml
