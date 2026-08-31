@@ -879,7 +879,7 @@
             const PAYLOAD_SIZE_BYTES = 4;
             const HEADER_BASE_SIZE = MAGIC_LENGTH + SALT_LENGTH + IV_LENGTH + FILENAME_LEN_BYTES +
                 PAYLOAD_SIZE_BYTES; // 38 bytes
-            const PBKDF2_ITERATIONS = 100000;
+            const PBKDF2_ITERATIONS = 10000;
             const GCM_TAG_BYTES = 16;
             const MAX_COVER_IMAGE_BYTES = 25 * 1024 * 1024; // 25 MB
             const MAX_COVER_IMAGE_PIXELS = 30 * 1024 * 1024; // 30 megapixels safety
