@@ -1,0 +1,2010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StegoVault — Zero-Trace Client-Side Steganography &amp; Encrypted File Concealer</title>
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <style>
+        :root {
+            --bg-void: #09090b;
+            --bg-obsidian: #0d1117;
+            --bg-panel: #121215;
+            --bg-panel-alt: #18181b;
+            --border-crisp: #27272a;
+            --border-soft: rgba(255, 255, 255, 0.08);
+            --emerald: #10b981;
+            --emerald-light: #34d399;
+            --cyan: #06b6d4;
+            --rose: #f43f5e;
+            --amber: #f59e0b;
+            --text-primary: #e4e4e7;
+            --text-secondary: #a1a1aa;
+            --text-muted: #52525b;
+            --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-void);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            position: relative;
+        }
+
+        /* Radial background glows */
+        .bg-glow {
+            position: fixed;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 0;
+            filter: blur(120px);
+            opacity: 0.5;
+        }
+        .bg-glow-1 {
+            width: 600px;
+            height: 600px;
+            background: rgba(16, 185, 129, 0.08);
+            top: -200px;
+            left: -200px;
+        }
+        .bg-glow-2 {
+            width: 500px;
+            height: 500px;
+            background: rgba(6, 182, 212, 0.06);
+            bottom: -150px;
+            right: -150px;
+        }
+        .bg-glow-3 {
+            width: 300px;
+            height: 300px;
+            background: rgba(244, 63, 94, 0.04);
+            top: 40%;
+            left: 60%;
+        }
+
+        /* Glassmorphism panels */
+        .glass-panel {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-crisp);
+            border-radius: 16px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(255, 255, 255, 0.04);
+        }
+        .glass-panel-alt {
+            background: var(--bg-panel-alt);
+            border: 1px solid var(--border-soft);
+            border-radius: 12px;
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            box-shadow: 0 2px 16px rgba(0, 0, 0, 0.35);
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #52525b;
+        }
+
+        /* Dropzone styles */
+        .dropzone {
+            border: 2px dashed #3f3f46;
+            border-radius: 12px;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        .dropzone:hover {
+            border-color: #52525b;
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .dropzone.drag-over {
+            border-color: var(--emerald);
+            background: rgba(16, 185, 129, 0.06);
+            box-shadow: 0 0 24px rgba(16, 185, 129, 0.15);
+        }
+        .dropzone.drag-over .dropzone-icon {
+            color: var(--emerald);
+            transform: scale(1.15);
+        }
+        .dropzone-icon {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            color: var(--text-muted);
+        }
+        .dropzone.has-file {
+            border-color: var(--emerald);
+            border-style: solid;
+            background: rgba(16, 185, 129, 0.04);
+        }
+        .dropzone.has-error {
+            border-color: var(--rose);
+            border-style: solid;
+            background: rgba(244, 63, 94, 0.04);
+        }
+
+        /* Tab styles */
+        .tab-btn {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-bottom: 2px solid transparent;
+            color: var(--text-muted);
+            font-weight: 500;
+            letter-spacing: 0.02em;
+            padding: 12px 24px;
+            font-size: 14px;
+            cursor: pointer;
+            user-select: none;
+            border-radius: 8px 8px 0 0;
+            white-space: nowrap;
+        }
+        .tab-btn:hover {
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .tab-btn.active {
+            color: var(--emerald-light);
+            border-bottom-color: var(--emerald);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        /* Button styles */
+        .btn-primary {
+            background: linear-gradient(135deg, #059669, #10b981);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 14px;
+            letter-spacing: 0.03em;
+            padding: 12px 28px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-primary:hover {
+            box-shadow: 0 6px 24px rgba(16, 185, 129, 0.5);
+            transform: translateY(-1px);
+        }
+        .btn-primary:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .btn-secondary {
+            background: #27272a;
+            color: var(--text-primary);
+            border: 1px solid #3f3f46;
+            border-radius: 10px;
+            font-weight: 500;
+            font-size: 13px;
+            padding: 10px 20px;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-secondary:hover {
+            background: #3f3f46;
+            border-color: #52525b;
+        }
+        .btn-secondary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-icon {
+            width: 38px;
+            height: 38px;
+            min-width: 38px;
+            min-height: 38px;
+            border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #27272a;
+            border: 1px solid #3f3f46;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: var(--text-secondary);
+        }
+        .btn-icon:hover {
+            background: #3f3f46;
+            color: var(--text-primary);
+        }
+
+        /* Progress bar */
+        .capacity-bar-track {
+            height: 8px;
+            background: #27272a;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .capacity-bar-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+        .capacity-bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0% {
+                transform: translateX(-100%);
+            }
+            100% {
+                transform: translateX(100%);
+            }
+        }
+
+        /* Toggle switch */
+        .toggle-track {
+            width: 48px;
+            height: 26px;
+            border-radius: 13px;
+            background: #3f3f46;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            flex-shrink: 0;
+            border: 1px solid #52525b;
+        }
+        .toggle-track.active {
+            background: var(--emerald);
+            border-color: var(--emerald);
+        }
+        .toggle-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+        }
+        .toggle-track.active .toggle-thumb {
+            left: 24px;
+        }
+
+        /* Spinner */
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: inline-block;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Toast system */
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+            max-width: 380px;
+        }
+        .toast {
+            pointer-events: auto;
+            padding: 14px 18px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.01em;
+            animation: toast-in 0.35s cubic-bezier(0.21, 1.02, 0.73, 1);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            border: 1px solid;
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .toast.toast-out {
+            animation: toast-out 0.3s cubic-bezier(0.55, 0, 0.55, 0.2) forwards;
+        }
+        .toast-success {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: var(--emerald-light);
+        }
+        .toast-error {
+            background: rgba(244, 63, 94, 0.15);
+            border-color: rgba(244, 63, 94, 0.4);
+            color: var(--rose);
+        }
+        .toast-info {
+            background: rgba(6, 182, 212, 0.12);
+            border-color: rgba(6, 182, 212, 0.35);
+            color: var(--cyan);
+        }
+        .toast-warning {
+            background: rgba(245, 158, 11, 0.12);
+            border-color: rgba(245, 158, 11, 0.35);
+            color: var(--amber);
+        }
+        @keyframes toast-in {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        @keyframes toast-out {
+            from {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+        }
+
+        /* Password strength meter */
+        .strength-bar {
+            height: 4px;
+            border-radius: 2px;
+            transition: all 0.4s ease;
+            background: #3f3f46;
+        }
+        .strength-bar.level-1 {
+            background: var(--rose);
+            width: 20%;
+        }
+        .strength-bar.level-2 {
+            background: #f97316;
+            width: 40%;
+        }
+        .strength-bar.level-3 {
+            background: var(--amber);
+            width: 60%;
+        }
+        .strength-bar.level-4 {
+            background: #84cc16;
+            width: 80%;
+        }
+        .strength-bar.level-5 {
+            background: var(--emerald);
+            width: 100%;
+        }
+
+        /* Monospace text areas */
+        .mono {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            letter-spacing: 0.02em;
+            word-break: break-all;
+        }
+
+        /* Result display */
+        .result-textarea {
+            background: #0d1117;
+            border: 1px solid #27272a;
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            padding: 12px 16px;
+            resize: vertical;
+            min-height: 120px;
+            width: 100%;
+            transition: border-color 0.2s ease;
+        }
+        .result-textarea:focus {
+            outline: none;
+            border-color: var(--emerald);
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
+        }
+
+        /* File input hidden */
+        .hidden-input {
+            display: none;
+        }
+
+        /* Responsive grid */
+        .encode-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .encode-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            .tab-btn {
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+            #toast-container {
+                bottom: 12px;
+                right: 12px;
+                left: 12px;
+                max-width: none;
+            }
+            .btn-primary {
+                width: 100%;
+                justify-content: center;
+            }
+            .glass-panel {
+                border-radius: 12px;
+            }
+        }
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .encode-grid {
+                gap: 14px;
+            }
+        }
+        @media (min-width: 1025px) {
+            .encode-grid {
+                gap: 24px;
+            }
+        }
+
+        /* Trust badge */
+        .trust-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+            border-radius: 20px;
+            padding: 5px 14px;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--emerald-light);
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            cursor: default;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .trust-badge svg {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        /* Micro animations */
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .pulse-glow {
+            animation: pulseGlow 2.5s ease-in-out infinite;
+        }
+        @keyframes pulseGlow {
+            0%,
+            100% {
+                box-shadow: 0 0 12px rgba(16, 185, 129, 0.2);
+            }
+            50% {
+                box-shadow: 0 0 28px rgba(16, 185, 129, 0.4);
+            }
+        }
+
+        /* Thumbnail preview */
+        .thumb-preview {
+            max-height: 100px;
+            max-width: 100%;
+            border-radius: 6px;
+            border: 1px solid #3f3f46;
+            object-fit: contain;
+        }
+
+        /* Segmented control for bit density */
+        .segmented-control {
+            display: inline-flex;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #3f3f46;
+            background: #1a1a1e;
+        }
+        .segmented-btn {
+            padding: 8px 16px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .segmented-btn.active {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--emerald-light);
+        }
+        .segmented-btn:hover:not(.active) {
+            color: var(--text-secondary);
+            background: rgba(255, 255, 255, 0.03);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Background Glow Effects -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+
+    <!-- Main App Container -->
+    <div class="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
+
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8 fade-in">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border border-emerald-500/30 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="5" width="18" height="14" rx="3" ry="3"/>
+                        <path d="M3 9h18"/>
+                        <path d="M8 5v4"/>
+                        <circle cx="8" cy="15" r="1.5" fill="currentColor"/>
+                        <circle cx="12" cy="15" r="1.5" fill="currentColor"/>
+                        <circle cx="16" cy="15" r="1.5" fill="currentColor"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold tracking-tight text-white">
+                        Stego<span class="text-emerald-400">Vault</span>
+                    </h1>
+                    <p class="text-xs text-zinc-400 mt-0.5 font-medium tracking-wide">
+                        Zero-Trace Client-Side Steganography &amp; Encrypted File Concealer
+                    </p>
+                </div>
+            </div>
+            <div class="trust-badge" title="All operations run locally in your browser. No data ever leaves your device.">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <path d="M9 12l2 2 4-4"/>
+                </svg>
+                100% Client-Side WebCrypto &bull; Zero Server Requests &bull; RAM Only
+            </div>
+        </header>
+
+        <!-- Tabs -->
+        <nav class="flex gap-2 border-b border-zinc-800 mb-6 sm:mb-8 overflow-x-auto fade-in" role="tablist" aria-label="Main operations">
+            <button class="tab-btn active" id="tab-encode-btn" role="tab" aria-selected="true" aria-controls="encode-panel" data-tab="encode">
+                <span class="inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg>
+                    Hide Secret (Encode)
+                </span>
+            </button>
+            <button class="tab-btn" id="tab-decode-btn" role="tab" aria-selected="false" aria-controls="decode-panel" data-tab="decode">
+                <span class="inline-flex items-center gap-2">
+                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/><path d="M12 3v2"/><path d="M12 9v2"/></svg>
+                    Reveal Secret (Decode)
+                </span>
+            </button>
+        </nav>
+
+        <!-- ============ ENCODE PANEL ============ -->
+        <section id="encode-panel" role="tabpanel" aria-labelledby="tab-encode-btn" class="fade-in">
+            <div class="encode-grid">
+                <!-- Left Column: Cover Image -->
+                <div class="glass-panel p-5 sm:p-6 flex flex-col gap-4">
+                    <h2 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2">
+                        <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                        Cover Image
+                    </h2>
+
+                    <!-- Cover Image Dropzone -->
+                    <div class="dropzone flex flex-col items-center justify-center py-8 px-4 text-center" id="cover-dropzone" tabindex="0" role="button" aria-label="Upload cover image">
+                        <svg class="dropzone-icon w-10 h-10 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                            <polyline points="21 15 16 10 5 21"/>
+                        </svg>
+                        <p class="text-sm font-medium text-zinc-300">Drag &amp; drop cover image here</p>
+                        <p class="text-xs text-zinc-500 mt-1">or <span class="text-emerald-400 underline underline-offset-2">click to browse</span></p>
+                        <p class="text-xs text-zinc-600 mt-2 mono">PNG &bull; JPG &bull; WEBP</p>
+                        <div id="cover-preview" class="hidden mt-3 flex flex-col items-center gap-2">
+                            <img id="cover-thumb" class="thumb-preview" alt="Cover preview">
+                            <div class="text-xs text-zinc-400 flex flex-col items-center gap-0.5">
+                                <span id="cover-dims" class="mono"></span>
+                                <span id="cover-capacity" class="mono text-emerald-400 font-semibold"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="file" id="cover-input" class="hidden-input" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp">
+
+                    <!-- Capacity Meter -->
+                    <div class="glass-panel-alt p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-medium text-zinc-400">Payload Capacity</span>
+                            <span id="capacity-percentage" class="text-xs mono font-semibold text-emerald-400">0%</span>
+                        </div>
+                        <div class="capacity-bar-track">
+                            <div id="capacity-bar-fill" class="capacity-bar-fill bg-emerald-500" style="width:0%"></div>
+                        </div>
+                        <p id="capacity-detail" class="text-xs text-zinc-500 mt-2 mono">Upload a cover image to calculate capacity</p>
+                    </div>
+                </div>
+
+                <!-- Right Column: Secret Payload & Options -->
+                <div class="flex flex-col gap-4">
+                    <!-- Secret Payload -->
+                    <div class="glass-panel p-5 sm:p-6">
+                        <h2 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2 mb-4">
+                            <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            Secret Payload
+                        </h2>
+
+                        <!-- Text/File Toggle -->
+                        <div class="flex gap-2 mb-4">
+                            <button id="mode-text-btn" class="btn-secondary active text-sm" style="background:rgba(6,182,212,0.12);border-color:rgba(6,182,212,0.3);color:var(--cyan);">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                                Type Secret Text
+                            </button>
+                            <button id="mode-file-btn" class="btn-secondary text-sm">
+                                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                                Upload Secret File
+                            </button>
+                        </div>
+
+                        <!-- Text Input Mode -->
+                        <div id="text-mode-panel">
+                            <textarea id="secret-text" class="result-textarea" placeholder="Type or paste your secret message here..." rows="5" style="min-height:100px;"></textarea>
+                        </div>
+
+                        <!-- File Input Mode -->
+                        <div id="file-mode-panel" class="hidden">
+                            <div class="dropzone flex flex-col items-center justify-center py-6 px-4 text-center" id="secret-dropzone" tabindex="0" role="button" aria-label="Upload secret file">
+                                <svg class="dropzone-icon w-8 h-8 mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <polyline points="17 8 12 3 7 8"/>
+                                    <line x1="12" y1="3" x2="12" y2="15"/>
+                                </svg>
+                                <p class="text-sm font-medium text-zinc-300">Drop secret file here</p>
+                                <p class="text-xs text-zinc-500 mt-1">or <span class="text-cyan-400 underline underline-offset-2">click to browse</span></p>
+                                <p class="text-xs text-zinc-600 mt-2 mono">ZIP &bull; PDF &bull; DOCX &bull; ENV &bull; KEY &bull; Any File</p>
+                                <div id="secret-file-info" class="hidden mt-2 flex items-center gap-2 text-xs text-zinc-400">
+                                    <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                                    <span id="secret-file-name" class="mono"></span>
+                                    <span id="secret-file-size" class="mono"></span>
+                                </div>
+                            </div>
+                            <input type="file" id="secret-input" class="hidden-input" accept="*/*">
+                        </div>
+                    </div>
+
+                    <!-- Security Options -->
+                    <div class="glass-panel p-5 sm:p-6">
+                        <h2 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2 mb-4">
+                            <svg class="w-4 h-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            Security Options
+                        </h2>
+
+                        <!-- Passphrase -->
+                        <div class="mb-4">
+                            <label class="block text-xs font-medium text-zinc-400 mb-2" for="encode-passphrase">
+                                Passphrase <span class="text-zinc-600">(optional — recommended)</span>
+                            </label>
+                            <div class="relative">
+                                <input id="encode-passphrase" type="password" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all pr-12" placeholder="Enter passphrase for encryption..." autocomplete="off">
+                                <button id="toggle-passphrase" class="btn-icon absolute right-2 top-1/2 -translate-y-1/2" type="button" aria-label="Toggle passphrase visibility">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                            </div>
+                            <div class="mt-2 flex items-center gap-2">
+                                <div class="strength-bar flex-1" id="pass-strength-bar" style="width:0%"></div>
+                                <span id="pass-strength-label" class="text-xs font-medium text-zinc-500">—</span>
+                            </div>
+                        </div>
+
+                        <!-- Bit Density -->
+                        <div>
+                            <label class="block text-xs font-medium text-zinc-400 mb-2">Bit Density</label>
+                            <div class="segmented-control" role="radiogroup" aria-label="Bit density selection">
+                                <button class="segmented-btn active" id="density-1-btn" data-density="1" role="radio" aria-checked="true">
+                                    1 LSB <span class="text-xs opacity-70">(Ultra-Stealth)</span>
+                                </button>
+                                <button class="segmented-btn" id="density-2-btn" data-density="2" role="radio" aria-checked="false">
+                                    2 LSB <span class="text-xs opacity-70">(High-Capacity)</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Button -->
+                    <button id="encode-action-btn" class="btn-primary w-full justify-center py-4 text-base" disabled>
+                        <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                        Conceal &amp; Download Image
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ DECODE PANEL ============ -->
+        <section id="decode-panel" role="tabpanel" aria-labelledby="tab-decode-btn" class="hidden fade-in">
+            <div class="max-w-2xl mx-auto glass-panel p-5 sm:p-8">
+                <h2 class="text-sm font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-2 mb-6">
+                    <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    Stego Image Input
+                </h2>
+
+                <!-- Stego Image Dropzone -->
+                <div class="dropzone flex flex-col items-center justify-center py-10 px-4 text-center mb-6" id="stego-dropzone" tabindex="0" role="button" aria-label="Upload steganographic image">
+                    <svg class="dropzone-icon w-12 h-12 mb-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <polyline points="21 15 16 10 5 21"/>
+                        <path d="M12 3v3"/>
+                        <path d="M12 18v3"/>
+                        <path d="M3 12h3"/>
+                        <path d="M18 12h3"/>
+                    </svg>
+                    <p class="text-sm font-medium text-zinc-300">Drag &amp; drop stego PNG image here</p>
+                    <p class="text-xs text-zinc-500 mt-1">or <span class="text-emerald-400 underline underline-offset-2">click to browse</span></p>
+                    <div id="stego-preview" class="hidden mt-3 flex flex-col items-center gap-2">
+                        <img id="stego-thumb" class="thumb-preview" alt="Stego preview">
+                        <span id="stego-dims" class="text-xs mono text-zinc-400"></span>
+                    </div>
+                </div>
+                <input type="file" id="stego-input" class="hidden-input" accept=".png,image/png">
+
+                <!-- Passphrase -->
+                <div class="mb-6">
+                    <label class="block text-xs font-medium text-zinc-400 mb-2" for="decode-passphrase">
+                        Passphrase <span class="text-zinc-600">(only if image was encrypted)</span>
+                    </label>
+                    <div class="relative">
+                        <input id="decode-passphrase" type="password" class="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 text-sm text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all pr-12" placeholder="Enter passphrase to decrypt..." autocomplete="off">
+                        <button id="toggle-decode-passphrase" class="btn-icon absolute right-2 top-1/2 -translate-y-1/2" type="button" aria-label="Toggle passphrase visibility">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Extract Button -->
+                <button id="decode-action-btn" class="btn-primary w-full justify-center py-4 text-base mb-6" disabled>
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    Extract Hidden Secret
+                </button>
+
+                <!-- Result Display -->
+                <div id="decode-result" class="hidden">
+                    <div class="glass-panel-alt p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-semibold text-zinc-300 flex items-center gap-2">
+                                <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                Secret Extracted
+                            </h3>
+                            <button id="copy-result-btn" class="btn-secondary text-xs py-2 px-3">
+                                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                                Copy Text
+                            </button>
+                        </div>
+                        <div class="flex flex-wrap gap-2 mb-3">
+                            <span id="result-filename" class="text-xs mono text-cyan-400 bg-cyan-500/10 border border-cyan-500/25 rounded-md px-2 py-1"></span>
+                            <span id="result-size" class="text-xs mono text-zinc-400 bg-zinc-800 rounded-md px-2 py-1"></span>
+                        </div>
+                        <textarea id="result-text" class="result-textarea" rows="6" readonly placeholder="Extracted content will appear here..."></textarea>
+                        <button id="download-result-btn" class="btn-secondary w-full mt-3 justify-center py-3">
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Download Extracted File
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" aria-live="polite"></div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            // ============================================
+            // CONSTANTS & CONFIGURATION
+            // ============================================
+            const MAGIC_BYTES = new Uint8Array([0x53, 0x54, 0x47, 0x31]); // "STG1"
+            const MAGIC_LENGTH = 4;
+            const SALT_LENGTH = 16;
+            const IV_LENGTH = 12;
+            const FILENAME_LEN_BYTES = 2;
+            const PAYLOAD_SIZE_BYTES = 4;
+            const HEADER_BASE_SIZE = MAGIC_LENGTH + SALT_LENGTH + IV_LENGTH + FILENAME_LEN_BYTES +
+                PAYLOAD_SIZE_BYTES; // 38 bytes
+            const PBKDF2_ITERATIONS = 100000;
+            const GCM_TAG_BYTES = 16;
+            const MAX_COVER_IMAGE_BYTES = 25 * 1024 * 1024; // 25 MB
+            const MAX_COVER_IMAGE_PIXELS = 30 * 1024 * 1024; // 30 megapixels safety
+
+            // ============================================
+            // DOM ELEMENT REFERENCES
+            // ============================================
+            const $ = (sel) => document.querySelector(sel);
+            const $$ = (sel) => document.querySelectorAll(sel);
+
+            // Tabs
+            const tabEncodeBtn = $('#tab-encode-btn');
+            const tabDecodeBtn = $('#tab-decode-btn');
+            const encodePanel = $('#encode-panel');
+            const decodePanel = $('#decode-panel');
+
+            // Encode elements
+            const coverDropzone = $('#cover-dropzone');
+            const coverInput = $('#cover-input');
+            const coverPreview = $('#cover-preview');
+            const coverThumb = $('#cover-thumb');
+            const coverDims = $('#cover-dims');
+            const coverCapacityEl = $('#cover-capacity');
+            const capacityBarFill = $('#capacity-bar-fill');
+            const capacityPercentage = $('#capacity-percentage');
+            const capacityDetail = $('#capacity-detail');
+            const modeTextBtn = $('#mode-text-btn');
+            const modeFileBtn = $('#mode-file-btn');
+            const textModePanel = $('#text-mode-panel');
+            const fileModePanel = $('#file-mode-panel');
+            const secretTextarea = $('#secret-text');
+            const secretDropzone = $('#secret-dropzone');
+            const secretInput = $('#secret-input');
+            const secretFileInfo = $('#secret-file-info');
+            const secretFileName = $('#secret-file-name');
+            const secretFileSize = $('#secret-file-size');
+            const encodePassphrase = $('#encode-passphrase');
+            const togglePassphraseBtn = $('#toggle-passphrase');
+            const passStrengthBar = $('#pass-strength-bar');
+            const passStrengthLabel = $('#pass-strength-label');
+            const density1Btn = $('#density-1-btn');
+            const density2Btn = $('#density-2-btn');
+            const encodeActionBtn = $('#encode-action-btn');
+
+            // Decode elements
+            const stegoDropzone = $('#stego-dropzone');
+            const stegoInput = $('#stego-input');
+            const stegoPreview = $('#stego-preview');
+            const stegoThumb = $('#stego-thumb');
+            const stegoDims = $('#stego-dims');
+            const decodePassphrase = $('#decode-passphrase');
+            const toggleDecodePassphraseBtn = $('#toggle-decode-passphrase');
+            const decodeActionBtn = $('#decode-action-btn');
+            const decodeResult = $('#decode-result');
+            const resultText = $('#result-text');
+            const resultFilename = $('#result-filename');
+            const resultSize = $('#result-size');
+            const copyResultBtn = $('#copy-result-btn');
+            const downloadResultBtn = $('#download-result-btn');
+
+            const toastContainer = $('#toast-container');
+
+            // ============================================
+            // STATE
+            // ============================================
+            let coverImageData = null; // { file, imageData, width, height, capacity1, capacity2 }
+            let secretFileData = null; // { file, data (Uint8Array), filename }
+            let secretTextValue = '';
+            let currentMode = 'text'; // 'text' | 'file'
+            let currentBitDensity = 1; // 1 or 2
+            let stegoImageData = null; // { file, imageData, width, height }
+            let extractedData = null; // { filename, data (Uint8Array), size }
+            let isPassphraseVisible = false;
+            let isDecodePassphraseVisible = false;
+            let isProcessing = false;
+
+            // ============================================
+            // UTILITY FUNCTIONS
+            // ============================================
+            function formatBytes(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                const val = (bytes / Math.pow(k, i)).toFixed(i > 0 ? 1 : 0);
+                return `${val} ${sizes[i]}`;
+            }
+
+            function formatDimensions(w, h) {
+                return `${w} × ${h} px`;
+            }
+
+            function generateTimestamp() {
+                const d = new Date();
+                const pad = (n) => String(n).padStart(2, '0');
+                return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+            }
+
+            function sanitizeFilename(name) {
+                return name.replace(/[^a-zA-Z0-9._-]/g, '_');
+            }
+
+            function isValidUtf8(buffer) {
+                try {
+                    const text = new TextDecoder('utf-8', { fatal: true }).decode(buffer);
+                    return true;
+                } catch {
+                    return false;
+                }
+            }
+
+            function isPrintableText(text) {
+                if (text.length === 0) return false;
+                const printable = text.replace(/[\x20-\x7E\t\n\r\u00A0-\uFFFF]/g, '');
+                return printable.length / text.length < 0.02;
+            }
+
+            function getMimeTypeFromFilename(filename) {
+                const ext = filename.split('.').pop()?.toLowerCase() || '';
+                const mimeMap = {
+                    txt: 'text/plain',
+                    md: 'text/markdown',
+                    json: 'application/json',
+                    pdf: 'application/pdf',
+                    zip: 'application/zip',
+                    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+                    png: 'image/png',
+                    jpg: 'image/jpeg',
+                    jpeg: 'image/jpeg',
+                    gif: 'image/gif',
+                    webp: 'image/webp',
+                    env: 'text/plain',
+                    key: 'application/octet-stream',
+                    pem: 'application/x-pem-file',
+                    crt: 'application/x-x509-ca-cert',
+                    csv: 'text/csv',
+                    xml: 'application/xml',
+                    html: 'text/html',
+                    css: 'text/css',
+                    js: 'application/javascript',
+                    ts: 'text/plain',
+                    py: 'text/x-python',
+                    go: 'text/plain',
+                    rs: 'text/plain',
+                    java: 'text/plain',
+                    sh: 'text/x-shellscript',
+                    yml: 'text/yaml',
+                    yaml: 'text/yaml',
+                    toml: 'text/plain',
+                    ini: 'text/plain',
+                    cfg: 'text/plain',
+                    log: 'text/plain',
+                };
+                return mimeMap[ext] || 'application/octet-stream';
+            }
+
+            function calculatePasswordStrength(password) {
+                if (!password) return { level: 0, label: '—' };
+                let score = 0;
+                if (password.length >= 4) score++;
+                if (password.length >= 8) score++;
+                if (password.length >= 12) score++;
+                if (password.length >= 16) score++;
+                if (/[a-z]/.test(password) && /[A-Z]/.test(password)) score++;
+                if (/\d/.test(password)) score++;
+                if (/[^a-zA-Z0-9]/.test(password)) score++;
+                const level = Math.min(5, Math.floor(score / 1.4) + (password.length >= 8 ? 1 : 0));
+                const clamped = Math.min(5, Math.max(0, level));
+                const labels = ['—', 'Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
+                return { level: clamped, label: labels[clamped] };
+            }
+
+            // ============================================
+            // TOAST SYSTEM
+            // ============================================
+            function showToast(message, type = 'info', duration = 4000) {
+                const toast = document.createElement('div');
+                toast.className = `toast toast-${type}`;
+                const icons = {
+                    success: '<svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+                    error: '<svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+                    info: '<svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+                    warning: '<svg class="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>'
+                };
+                toast.innerHTML = `${icons[type] || icons.info}<span>${message}</span>`;
+                toastContainer.appendChild(toast);
+                setTimeout(() => {
+                    toast.classList.add('toast-out');
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
+            }
+
+            // ============================================
+            // CRYPTO FUNCTIONS (Web Crypto API)
+            // ============================================
+            async function deriveKeyFromPassphrase(passphrase, salt) {
+                const encoder = new TextEncoder();
+                const passphraseBytes = encoder.encode(passphrase);
+                const keyMaterial = await crypto.subtle.importKey('raw', passphraseBytes, 'PBKDF2', false, [
+                    'deriveKey'
+                ]);
+                const key = await crypto.subtle.deriveKey({
+                    name: 'PBKDF2',
+                    salt: salt,
+                    iterations: PBKDF2_ITERATIONS,
+                    hash: 'SHA-256'
+                }, keyMaterial, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+                return key;
+            }
+
+            async function encryptData(plaintextBytes, passphrase) {
+                const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH));
+                const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
+                const key = await deriveKeyFromPassphrase(passphrase, salt);
+                const ciphertextBuffer = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, plaintextBytes);
+                const ciphertext = new Uint8Array(ciphertextBuffer);
+                return { salt, iv, ciphertext };
+            }
+
+            async function decryptData(ciphertext, salt, iv, passphrase) {
+                const key = await deriveKeyFromPassphrase(passphrase, salt);
+                const plaintextBuffer = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv }, key, ciphertext);
+                return new Uint8Array(plaintextBuffer);
+            }
+
+            // ============================================
+            // BINARY PACKING / UNPACKING
+            // ============================================
+            function buildBinaryPayload(salt, iv, filename, ciphertext) {
+                const encoder = new TextEncoder();
+                const filenameBytes = encoder.encode(filename);
+                const totalSize = HEADER_BASE_SIZE + filenameBytes.length + ciphertext.length;
+                const buffer = new Uint8Array(totalSize);
+                const view = new DataView(buffer.buffer);
+
+                // Magic bytes
+                buffer.set(MAGIC_BYTES, 0);
+                // Salt
+                buffer.set(salt, MAGIC_LENGTH);
+                // IV
+                buffer.set(iv, MAGIC_LENGTH + SALT_LENGTH);
+                // Filename length (big-endian uint16)
+                view.setUint16(MAGIC_LENGTH + SALT_LENGTH + IV_LENGTH, filenameBytes.length, false);
+                // Filename
+                buffer.set(filenameBytes, MAGIC_LENGTH + SALT_LENGTH + IV_LENGTH + FILENAME_LEN_BYTES);
+                // Payload size (big-endian uint32)
+                view.setUint32(MAGIC_LENGTH + SALT_LENGTH + IV_LENGTH + FILENAME_LEN_BYTES + filenameBytes.length,
+                    ciphertext.length, false);
+                // Ciphertext
+                buffer.set(ciphertext, MAGIC_LENGTH + SALT_LENGTH + IV_LENGTH + FILENAME_LEN_BYTES + filenameBytes
+                    .length + PAYLOAD_SIZE_BYTES);
+                return buffer;
+            }
+
+            function parseBinaryHeader(data) {
+                if (data.length < HEADER_BASE_SIZE) {
+                    throw new Error('Data too short to be a valid StegoVault payload.');
+                }
+                // Check magic bytes
+                for (let i = 0; i < MAGIC_LENGTH; i++) {
+                    if (data[i] !== MAGIC_BYTES[i]) {
+                        throw new Error(
+                            'Invalid StegoVault signature. This image does not contain hidden data from StegoVault.');
+                    }
+                }
+                const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+                const salt = data.slice(MAGIC_LENGTH, MAGIC_LENGTH + SALT_LENGTH);
+                const iv = data.slice(MAGIC_LENGTH + SALT_LENGTH, MAGIC_LENGTH + SALT_LENGTH + IV_LENGTH);
+                const filenameLen = view.getUint16(MAGIC_LENGTH + SALT_LENGTH + IV_LENGTH, false);
+                const filenameStart = MAGIC_LENGTH + SALT_LENGTH + IV_LENGTH + FILENAME_LEN_BYTES;
+                if (filenameStart + filenameLen > data.length) {
+                    throw new Error('Corrupted payload header: filename length exceeds data size.');
+                }
+                const filenameBytes = data.slice(filenameStart, filenameStart + filenameLen);
+                const decoder = new TextDecoder('utf-8');
+                const filename = decoder.decode(filenameBytes);
+                const payloadSizeStart = filenameStart + filenameLen;
+                if (payloadSizeStart + PAYLOAD_SIZE_BYTES > data.length) {
+                    throw new Error('Corrupted payload header: payload size field exceeds data size.');
+                }
+                const payloadSize = view.getUint32(payloadSizeStart, false);
+                const ciphertextStart = payloadSizeStart + PAYLOAD_SIZE_BYTES;
+                if (ciphertextStart + payloadSize > data.length) {
+                    throw new Error('Corrupted payload: ciphertext size exceeds available data.');
+                }
+                const ciphertext = data.slice(ciphertextStart, ciphertextStart + payloadSize);
+                return { salt, iv, filename, ciphertext };
+            }
+
+            // ============================================
+            // LSB STEGANOGRAPHY ENGINE
+            // ============================================
+            /**
+             * Embed binary data into image pixel data using LSB steganography.
+             *
+             * For 1 LSB mode: each channel (R, G, B) gets 1 bit from the data.
+             *   The bit replaces the least significant bit of the channel byte.
+             *   Formula: pixelData[i] = (pixelData[i] & 0xFE) | bit
+             *
+             * For 2 LSB mode: each channel gets 2 bits from the data.
+             *   The 2 bits replace the two least significant bits of the channel byte.
+             *   Formula: pixelData[i] = (pixelData[i] & 0xFC) | twoBits
+             *
+             * The alpha channel (every 4th byte, index % 4 === 3) is NEVER modified.
+             * Bits are consumed MSB-first from each data byte.
+             */
+            function embedDataIntoPixels(imageData, dataBytes, bitsPerChannel) {
+                const pixelData = imageData.data;
+                const totalBitsNeeded = dataBytes.length * 8;
+                const totalChannelsAvailable = Math.floor(pixelData.length / 4) * 3;
+                const totalBitsAvailable = totalChannelsAvailable * bitsPerChannel;
+
+                if (totalBitsNeeded > totalBitsAvailable) {
+                    throw new Error(
+                        `Insufficient capacity: need ${totalBitsNeeded} bits but only ${totalBitsAvailable} available.`);
+                }
+
+                let dataByteIndex = 0;
+                let dataBitIndex = 0; // 0-7, MSB first within current byte
+                const bitsPerChannelActual = bitsPerChannel;
+
+                for (let i = 0; i < pixelData.length && dataByteIndex < dataBytes.length; i++) {
+                    if (i % 4 === 3) continue; // Skip alpha channel
+
+                    if (bitsPerChannelActual === 1) {
+                        // Extract 1 bit from current data byte (MSB first)
+                        const bit = (dataBytes[dataByteIndex] >> (7 - dataBitIndex)) & 1;
+                        pixelData[i] = (pixelData[i] & 0xFE) | bit;
+                        dataBitIndex++;
+                        if (dataBitIndex === 8) {
+                            dataBitIndex = 0;
+                            dataByteIndex++;
+                        }
+                    } else {
+                        // Extract 2 bits from current data byte
+                        let twoBits;
+                        if (dataBitIndex <= 6) {
+                            // Both bits from current byte
+                            twoBits = (dataBytes[dataByteIndex] >> (6 - dataBitIndex)) & 0x03;
+                            dataBitIndex += 2;
+                            if (dataBitIndex === 8) {
+                                dataBitIndex = 0;
+                                dataByteIndex++;
+                            }
+                        } else {
+                            // dataBitIndex === 7, need 1 bit from current and 1 from next byte
+                            twoBits = ((dataBytes[dataByteIndex] & 0x01) << 1);
+                            dataByteIndex++;
+                            if (dataByteIndex < dataBytes.length) {
+                                twoBits |= (dataBytes[dataByteIndex] >> 7) & 0x01;
+                                dataBitIndex = 1;
+                            } else {
+                                twoBits |= 0;
+                                dataBitIndex = 0;
+                            }
+                        }
+                        pixelData[i] = (pixelData[i] & 0xFC) | twoBits;
+                    }
+                }
+                return imageData;
+            }
+
+            /**
+             * Extract binary data from image pixel data using LSB steganography.
+             * Reverses the embedding process described above.
+             */
+            function extractDataFromPixels(imageData, totalBytes, bitsPerChannel) {
+                const pixelData = imageData.data;
+                const result = new Uint8Array(totalBytes);
+                let dataByteIndex = 0;
+                let dataBitIndex = 0; // 0-7, MSB first
+
+                for (let i = 0; i < pixelData.length && dataByteIndex < totalBytes; i++) {
+                    if (i % 4 === 3) continue; // Skip alpha channel
+
+                    if (bitsPerChannel === 1) {
+                        const bit = pixelData[i] & 1;
+                        result[dataByteIndex] = (result[dataByteIndex] << 1) | bit;
+                        dataBitIndex++;
+                        if (dataBitIndex === 8) {
+                            dataBitIndex = 0;
+                            dataByteIndex++;
+                        }
+                    } else {
+                        const twoBits = pixelData[i] & 0x03;
+                        if (dataBitIndex <= 6) {
+                            result[dataByteIndex] = (result[dataByteIndex] << 2) | twoBits;
+                            dataBitIndex += 2;
+                            if (dataBitIndex === 8) {
+                                dataBitIndex = 0;
+                                dataByteIndex++;
+                            }
+                        } else {
+                            // Only 1 bit left in current byte
+                            result[dataByteIndex] = (result[dataByteIndex] << 1) | ((twoBits >> 1) & 1);
+                            dataByteIndex++;
+                            if (dataByteIndex < totalBytes) {
+                                result[dataByteIndex] = twoBits & 0x01;
+                                dataBitIndex = 1;
+                            } else {
+                                dataBitIndex = 0;
+                            }
+                        }
+                    }
+                }
+                return result;
+            }
+
+            /**
+             * Calculate the maximum payload capacity (in bytes) for a given image.
+             */
+            function calculateCapacity(width, height, bitsPerChannel) {
+                const totalPixels = width * height;
+                const totalChannels = totalPixels * 3; // R, G, B only (alpha skipped)
+                const totalBits = totalChannels * bitsPerChannel;
+                return Math.floor(totalBits / 8);
+            }
+
+            // ============================================
+            // IMAGE LOADING & CANVAS OPERATIONS
+            // ============================================
+            function loadImageToCanvas(file) {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    const url = URL.createObjectURL(file);
+                    img.onload = () => {
+                        URL.revokeObjectURL(url);
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.naturalWidth;
+                        canvas.height = img.naturalHeight;
+                        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                        ctx.drawImage(img, 0, 0);
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        resolve({ canvas, ctx, imageData, width: canvas.width, height: canvas.height, img });
+                    };
+                    img.onerror = () => {
+                        URL.revokeObjectURL(url);
+                        reject(new Error('Failed to load image.'));
+                    };
+                    img.src = url;
+                });
+            }
+
+            function canvasToPngBlob(canvas) {
+                return new Promise((resolve, reject) => {
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            resolve(blob);
+                        } else {
+                            reject(new Error('Failed to convert canvas to PNG.'));
+                        }
+                    }, 'image/png', 1.0);
+                });
+            }
+
+            function downloadBlob(blob, filename, mimeType) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 5000);
+            }
+
+            // ============================================
+            // ENCODE LOGIC
+            // ============================================
+            async function performEncode() {
+                if (isProcessing) return;
+                if (!coverImageData) {
+                    showToast('Please upload a cover image first.', 'warning');
+                    return;
+                }
+                let payloadBytes = null;
+                let secretFilename = '';
+                if (currentMode === 'text') {
+                    const text = secretTextarea.value;
+                    if (!text.trim()) {
+                        showToast('Please enter secret text or upload a file.', 'warning');
+                        return;
+                    }
+                    const encoder = new TextEncoder();
+                    payloadBytes = encoder.encode(text);
+                    secretFilename = 'secret-message.txt';
+                } else {
+                    if (!secretFileData) {
+                        showToast('Please upload a secret file.', 'warning');
+                        return;
+                    }
+                    payloadBytes = secretFileData.data;
+                    secretFilename = secretFileData.filename;
+                }
+
+                const passphrase = encodePassphrase.value || '';
+                const capacity = calculateCapacity(coverImageData.width, coverImageData.height, currentBitDensity);
+                const headerOverhead = HEADER_BASE_SIZE + new TextEncoder().encode(secretFilename).length;
+                const totalDataSize = headerOverhead + payloadBytes.length + (passphrase ? GCM_TAG_BYTES : 0);
+
+                if (totalDataSize > capacity) {
+                    showToast(
+                        `Cover image too small: need ${formatBytes(totalDataSize)} but only ${formatBytes(capacity)} available.`,
+                        'error');
+                    return;
+                }
+
+                isProcessing = true;
+                encodeActionBtn.disabled = true;
+                const originalBtnContent = encodeActionBtn.innerHTML;
+                encodeActionBtn.innerHTML =
+                    '<div class="spinner"></div><span>Concealing Secret...</span>';
+
+                try {
+                    // Encrypt
+                    let salt, iv, ciphertext;
+                    if (passphrase) {
+                        const enc = await encryptData(payloadBytes, passphrase);
+                        salt = enc.salt;
+                        iv = enc.iv;
+                        ciphertext = enc.ciphertext;
+                    } else {
+                        salt = new Uint8Array(SALT_LENGTH); // zeros
+                        iv = new Uint8Array(IV_LENGTH); // zeros
+                        ciphertext = payloadBytes;
+                    }
+
+                    // Build binary payload
+                    const binaryPayload = buildBinaryPayload(salt, iv, secretFilename, ciphertext);
+
+                    // Embed into image
+                    const newImageData = embedDataIntoPixels(coverImageData.imageData, binaryPayload, currentBitDensity);
+
+                    // Draw back to canvas
+                    coverImageData.ctx.putImageData(newImageData, 0, 0);
+
+                    // Export as PNG
+                    const blob = await canvasToPngBlob(coverImageData.canvas);
+                    const outputFilename = `stego_vault_${generateTimestamp()}.png`;
+                    downloadBlob(blob, outputFilename, 'image/png');
+
+                    showToast(`Secret concealed successfully! Downloaded "${outputFilename}"`, 'success');
+                } catch (err) {
+                    console.error('Encode error:', err);
+                    showToast(`Encoding failed: ${err.message}`, 'error');
+                } finally {
+                    isProcessing = false;
+                    encodeActionBtn.disabled = false;
+                    encodeActionBtn.innerHTML = originalBtnContent;
+                    updateEncodeButtonState();
+                }
+            }
+
+            function updateEncodeButtonState() {
+                let ready = false;
+                if (coverImageData) {
+                    if (currentMode === 'text') {
+                        ready = secretTextarea.value.trim().length > 0;
+                    } else {
+                        ready = secretFileData !== null;
+                    }
+                }
+                encodeActionBtn.disabled = !ready || isProcessing;
+            }
+
+            // ============================================
+            // DECODE LOGIC
+            // ============================================
+            async function performDecode() {
+                if (isProcessing) return;
+                if (!stegoImageData) {
+                    showToast('Please upload a stego PNG image.', 'warning');
+                    return;
+                }
+                const passphrase = decodePassphrase.value || '';
+                isProcessing = true;
+                decodeActionBtn.disabled = true;
+                const originalBtnContent = decodeActionBtn.innerHTML;
+                decodeActionBtn.innerHTML =
+                '<div class="spinner"></div><span>Extracting Secret...</span>';
+
+                try {
+                    // Try both bit densities
+                    let extractedBytes = null;
+                    let usedBitDensity = 1;
+                    let parseError1 = null;
+                    let parseError2 = null;
+
+                    // First try with 1 bit per channel
+                    try {
+                        const maxBytes1 = calculateCapacity(stegoImageData.width, stegoImageData.height, 1);
+                        const partial1 = extractDataFromPixels(stegoImageData.imageData, Math.min(maxBytes1, 1024 *
+                            1024), 1);
+                        const parsed1 = parseBinaryHeader(partial1);
+                        const totalNeeded1 = HEADER_BASE_SIZE + new TextEncoder().encode(parsed1.filename).length +
+                            parsed1.ciphertext.length;
+                        if (totalNeeded1 <= maxBytes1) {
+                            extractedBytes = extractDataFromPixels(stegoImageData.imageData, totalNeeded1, 1);
+                            usedBitDensity = 1;
+                        } else {
+                            throw new Error('Incomplete data for 1-bit mode.');
+                        }
+                    } catch (err) {
+                        parseError1 = err;
+                    }
+
+                    // If 1-bit failed, try 2 bits per channel
+                    if (!extractedBytes) {
+                        try {
+                            const maxBytes2 = calculateCapacity(stegoImageData.width, stegoImageData.height, 2);
+                            const partial2 = extractDataFromPixels(stegoImageData.imageData, Math.min(maxBytes2,
+                                1024 * 1024), 2);
+                            const parsed2 = parseBinaryHeader(partial2);
+                            const totalNeeded2 = HEADER_BASE_SIZE + new TextEncoder().encode(parsed2.filename)
+                                .length + parsed2.ciphertext.length;
+                            if (totalNeeded2 <= maxBytes2) {
+                                extractedBytes = extractDataFromPixels(stegoImageData.imageData, totalNeeded2, 2);
+                                usedBitDensity = 2;
+                            } else {
+                                throw new Error('Incomplete data for 2-bit mode.');
+                            }
+                        } catch (err) {
+                            parseError2 = err;
+                        }
+                    }
+
+                    if (!extractedBytes) {
+                        const msg = parseError1?.message || parseError2?.message ||
+                            'No valid StegoVault data found in this image.';
+                        throw new Error(msg);
+                    }
+
+                    // Parse header
+                    const parsed = parseBinaryHeader(extractedBytes);
+                    const { salt, iv, ciphertext, filename } = parsed;
+
+                    // Decrypt if passphrase provided or if ciphertext is actually encrypted
+                    let plaintextBytes;
+                    if (passphrase) {
+                        plaintextBytes = await decryptData(ciphertext, salt, iv, passphrase);
+                    } else {
+                        // Try without passphrase (if no encryption was used)
+                        plaintextBytes = ciphertext;
+                    }
+
+                    // Store extracted data
+                    extractedData = {
+                        filename: filename,
+                        data: plaintextBytes,
+                        size: plaintextBytes.length,
+                    };
+
+                    // Display result
+                    displayExtractedResult(extractedData);
+                    showToast(`Secret extracted successfully! (${usedBitDensity} LSB mode)`, 'success');
+
+                } catch (err) {
+                    console.error('Decode error:', err);
+                    let errorMsg = err.message;
+                    if (err.name === 'OperationError' || errorMsg.includes('decrypt') || errorMsg.includes(
+                            'AES-GCM')) {
+                        errorMsg = 'Decryption failed. Incorrect passphrase or corrupted data.';
+                    }
+                    showToast(`Extraction failed: ${errorMsg}`, 'error');
+                    decodeResult.classList.add('hidden');
+                    extractedData = null;
+                } finally {
+                    isProcessing = false;
+                    decodeActionBtn.disabled = false;
+                    decodeActionBtn.innerHTML = originalBtnContent;
+                    updateDecodeButtonState();
+                }
+            }
+
+            function displayExtractedResult(data) {
+                const { filename, data: bytes, size } = data;
+                resultFilename.textContent = `📄 ${filename}`;
+                resultSize.textContent = `Size: ${formatBytes(size)}`;
+
+                // Try to display as text if valid UTF-8 and printable
+                let displayAsText = false;
+                let textContent = '';
+                if (size < 1024 * 1024) { // Only try text for < 1MB
+                    try {
+                        const decoder = new TextDecoder('utf-8', { fatal: true });
+                        textContent = decoder.decode(bytes);
+                        if (isPrintableText(textContent)) {
+                            displayAsText = true;
+                        }
+                    } catch {
+                        displayAsText = false;
+                    }
+                }
+
+                if (displayAsText) {
+                    resultText.value = textContent;
+                    resultText.readOnly = false;
+                    copyResultBtn.style.display = 'inline-flex';
+                    resultText.style.display = 'block';
+                } else {
+                    resultText.value = '(Binary file — use the download button below to save.)';
+                    resultText.readOnly = true;
+                    copyResultBtn.style.display = 'none';
+                    resultText.style.display = 'block';
+                }
+
+                // Configure download button
+                const mimeType = getMimeTypeFromFilename(filename);
+                downloadResultBtn.onclick = () => {
+                    const blob = new Blob([bytes], { type: mimeType });
+                    downloadBlob(blob, sanitizeFilename(filename), mimeType);
+                    showToast(`Downloading "${filename}"...`, 'info');
+                };
+
+                decodeResult.classList.remove('hidden');
+                decodeResult.classList.add('fade-in');
+            }
+
+            function updateDecodeButtonState() {
+                decodeActionBtn.disabled = !stegoImageData || isProcessing;
+            }
+
+            // ============================================
+            // DRAG & DROP HANDLING
+            // ============================================
+            function setupDropzone(dropzone, inputEl, onFileLoaded, fileValidator) {
+                // Click to browse
+                dropzone.addEventListener('click', () => inputEl.click());
+                dropzone.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        inputEl.click();
+                    }
+                });
+
+                // Drag events
+                dropzone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.add('drag-over');
+                });
+                dropzone.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.remove('drag-over');
+                });
+                dropzone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropzone.classList.remove('drag-over');
+                    const files = e.dataTransfer?.files;
+                    if (files && files.length > 0) {
+                        const file = files[0];
+                        if (fileValidator && !fileValidator(file)) {
+                            showToast(`Invalid file type. ${file.name} is not supported.`, 'error');
+                            return;
+                        }
+                        onFileLoaded(file);
+                    }
+                });
+
+                // File input change
+                inputEl.addEventListener('change', () => {
+                    const file = inputEl.files?.[0];
+                    if (file) {
+                        if (fileValidator && !fileValidator(file)) {
+                            showToast(`Invalid file type. ${file.name} is not supported.`, 'error');
+                            inputEl.value = '';
+                            return;
+                        }
+                        onFileLoaded(file);
+                    }
+                });
+            }
+
+            // ============================================
+            // EVENT HANDLERS SETUP
+            // ============================================
+            // Tab switching
+            function switchTab(tab) {
+                const isEncode = tab === 'encode';
+                tabEncodeBtn.classList.toggle('active', isEncode);
+                tabDecodeBtn.classList.toggle('active', !isEncode);
+                tabEncodeBtn.setAttribute('aria-selected', isEncode);
+                tabDecodeBtn.setAttribute('aria-selected', !isEncode);
+                encodePanel.classList.toggle('hidden', !isEncode);
+                decodePanel.classList.toggle('hidden', isEncode);
+                if (isEncode) {
+                    encodePanel.classList.add('fade-in');
+                    updateEncodeButtonState();
+                } else {
+                    decodePanel.classList.add('fade-in');
+                    updateDecodeButtonState();
+                }
+            }
+
+            tabEncodeBtn.addEventListener('click', () => switchTab('encode'));
+            tabDecodeBtn.addEventListener('click', () => switchTab('decode'));
+
+            // Cover image dropzone
+            setupDropzone(coverDropzone, coverInput, async (file) => {
+                if (file.size > MAX_COVER_IMAGE_BYTES) {
+                    showToast('Cover image too large (max 25 MB).', 'error');
+                    return;
+                }
+                try {
+                    const result = await loadImageToCanvas(file);
+                    if (result.width * result.height > MAX_COVER_IMAGE_PIXELS) {
+                        showToast('Image resolution too high (max 30 megapixels).', 'error');
+                        return;
+                    }
+                    coverImageData = {
+                        file,
+                        imageData: result.imageData,
+                        canvas: result.canvas,
+                        ctx: result.ctx,
+                        width: result.width,
+                        height: result.height,
+                    };
+                    coverDropzone.classList.add('has-file');
+                    coverDropzone.classList.remove('has-error');
+                    coverPreview.classList.remove('hidden');
+                    coverThumb.src = URL.createObjectURL(file);
+                    coverDims.textContent = formatDimensions(result.width, result.height);
+                    const cap1 = calculateCapacity(result.width, result.height, 1);
+                    const cap2 = calculateCapacity(result.width, result.height, 2);
+                    coverCapacityEl.textContent = `Capacity: ${formatBytes(cap1)} (1 LSB) / ${formatBytes(cap2)} (2 LSB)`;
+                    updateCapacityMeter();
+                    updateEncodeButtonState();
+                    showToast('Cover image loaded successfully.', 'success');
+                } catch (err) {
+                    console.error('Cover image load error:', err);
+                    coverDropzone.classList.remove('has-file');
+                    coverDropzone.classList.add('has-error');
+                    coverPreview.classList.add('hidden');
+                    coverImageData = null;
+                    updateCapacityMeter();
+                    updateEncodeButtonState();
+                    showToast(`Failed to load cover image: ${err.message}`, 'error');
+                }
+            }, (file) => {
+                const validTypes = ['image/png', 'image/jpeg', 'image/webp'];
+                const validExts = ['.png', '.jpg', '.jpeg', '.webp'];
+                return validTypes.includes(file.type) || validExts.some(ext => file.name.toLowerCase().endsWith(
+                ext));
+            });
+
+            // Secret file dropzone
+            setupDropzone(secretDropzone, secretInput, (file) => {
+                // Read file as ArrayBuffer
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const arrayBuffer = reader.result;
+                    const uint8Array = new Uint8Array(arrayBuffer);
+                    secretFileData = {
+                        file,
+                        data: uint8Array,
+                        filename: file.name,
+                        size: file.size,
+                    };
+                    secretDropzone.classList.add('has-file');
+                    secretFileInfo.classList.remove('hidden');
+                    secretFileName.textContent = file.name;
+                    secretFileSize.textContent = `(${formatBytes(file.size)})`;
+                    updateCapacityMeter();
+                    updateEncodeButtonState();
+                    showToast(`Secret file "${file.name}" loaded (${formatBytes(file.size)}).`, 'success');
+                };
+                reader.onerror = () => {
+                    showToast('Failed to read file.', 'error');
+                };
+                reader.readAsArrayBuffer(file);
+            }, null);
+
+            // Mode toggle (text vs file)
+            modeTextBtn.addEventListener('click', () => {
+                currentMode = 'text';
+                modeTextBtn.style.background = 'rgba(6,182,212,0.12)';
+                modeTextBtn.style.borderColor = 'rgba(6,182,212,0.3)';
+                modeTextBtn.style.color = 'var(--cyan)';
+                modeFileBtn.style.background = '';
+                modeFileBtn.style.borderColor = '';
+                modeFileBtn.style.color = '';
+                textModePanel.classList.remove('hidden');
+                fileModePanel.classList.add('hidden');
+                updateCapacityMeter();
+                updateEncodeButtonState();
+            });
+
+            modeFileBtn.addEventListener('click', () => {
+                currentMode = 'file';
+                modeFileBtn.style.background = 'rgba(6,182,212,0.12)';
+                modeFileBtn.style.borderColor = 'rgba(6,182,212,0.3)';
+                modeFileBtn.style.color = 'var(--cyan)';
+                modeTextBtn.style.background = '';
+                modeTextBtn.style.borderColor = '';
+                modeTextBtn.style.color = '';
+                textModePanel.classList.add('hidden');
+                fileModePanel.classList.remove('hidden');
+                updateCapacityMeter();
+                updateEncodeButtonState();
+            });
+
+            // Secret textarea input
+            secretTextarea.addEventListener('input', () => {
+                secretTextValue = secretTextarea.value;
+                updateCapacityMeter();
+                updateEncodeButtonState();
+            });
+
+            // Passphrase toggle
+            togglePassphraseBtn.addEventListener('click', () => {
+                isPassphraseVisible = !isPassphraseVisible;
+                encodePassphrase.type = isPassphraseVisible ? 'text' : 'password';
+            });
+
+            // Passphrase strength meter
+            encodePassphrase.addEventListener('input', () => {
+                const strength = calculatePasswordStrength(encodePassphrase.value);
+                passStrengthBar.className = `strength-bar level-${strength.level}`;
+                passStrengthBar.style.width = `${strength.level * 20}%`;
+                passStrengthLabel.textContent = strength.label;
+                passStrengthLabel.style.color = strength.level >= 4 ? 'var(--emerald)' : strength.level >= 2 ?
+                    'var(--amber)' : 'var(--rose)';
+            });
+
+            // Bit density segmented control
+            density1Btn.addEventListener('click', () => {
+                currentBitDensity = 1;
+                density1Btn.classList.add('active');
+                density2Btn.classList.remove('active');
+                density1Btn.setAttribute('aria-checked', 'true');
+                density2Btn.setAttribute('aria-checked', 'false');
+                updateCapacityMeter();
+            });
+            density2Btn.addEventListener('click', () => {
+                currentBitDensity = 2;
+                density2Btn.classList.add('active');
+                density1Btn.classList.remove('active');
+                density2Btn.setAttribute('aria-checked', 'true');
+                density1Btn.setAttribute('aria-checked', 'false');
+                updateCapacityMeter();
+            });
+
+            // Encode action
+            encodeActionBtn.addEventListener('click', performEncode);
+
+            // Stego image dropzone
+            setupDropzone(stegoDropzone, stegoInput, async (file) => {
+                if (file.size > MAX_COVER_IMAGE_BYTES) {
+                    showToast('Image too large (max 25 MB).', 'error');
+                    return;
+                }
+                try {
+                    const result = await loadImageToCanvas(file);
+                    stegoImageData = {
+                        file,
+                        imageData: result.imageData,
+                        canvas: result.canvas,
+                        ctx: result.ctx,
+                        width: result.width,
+                        height: result.height,
+                    };
+                    stegoDropzone.classList.add('has-file');
+                    stegoDropzone.classList.remove('has-error');
+                    stegoPreview.classList.remove('hidden');
+                    stegoThumb.src = URL.createObjectURL(file);
+                    stegoDims.textContent = formatDimensions(result.width, result.height);
+                    updateDecodeButtonState();
+                    showToast('Stego image loaded successfully.', 'success');
+                } catch (err) {
+                    console.error('Stego image load error:', err);
+                    stegoDropzone.classList.remove('has-file');
+                    stegoDropzone.classList.add('has-error');
+                    stegoPreview.classList.add('hidden');
+                    stegoImageData = null;
+                    updateDecodeButtonState();
+                    showToast(`Failed to load image: ${err.message}`, 'error');
+                }
+            }, (file) => {
+                return file.type === 'image/png' || file.name.toLowerCase().endsWith('.png');
+            });
+
+            // Decode passphrase toggle
+            toggleDecodePassphraseBtn.addEventListener('click', () => {
+                isDecodePassphraseVisible = !isDecodePassphraseVisible;
+                decodePassphrase.type = isDecodePassphraseVisible ? 'text' : 'password';
+            });
+
+            // Decode action
+            decodeActionBtn.addEventListener('click', performDecode);
+
+            // Copy result button
+            copyResultBtn.addEventListener('click', () => {
+                if (resultText.value && !resultText.readOnly) {
+                    navigator.clipboard.writeText(resultText.value).then(() => {
+                        showToast('Copied to clipboard!', 'success');
+                    }).catch(() => {
+                        // Fallback
+                        resultText.select();
+                        document.execCommand('copy');
+                        showToast('Copied to clipboard!', 'success');
+                    });
+                } else {
+                    showToast('No text to copy.', 'warning');
+                }
+            });
+
+            // ============================================
+            // CAPACITY METER
+            // ============================================
+            function updateCapacityMeter() {
+                if (!coverImageData) {
+                    capacityBarFill.style.width = '0%';
+                    capacityBarFill.style.background = '#3f3f46';
+                    capacityPercentage.textContent = '0%';
+                    capacityDetail.textContent = 'Upload a cover image to calculate capacity';
+                    return;
+                }
+
+                const capacity = calculateCapacity(coverImageData.width, coverImageData.height, currentBitDensity);
+                let payloadSize = 0;
+                let filenameEstimate = 'secret-message.txt';
+
+                if (currentMode === 'text') {
+                    const text = secretTextarea.value || '';
+                    payloadSize = new TextEncoder().encode(text).length;
+                    filenameEstimate = 'secret-message.txt';
+                } else if (secretFileData) {
+                    payloadSize = secretFileData.data.length;
+                    filenameEstimate = secretFileData.filename;
+                }
+
+                const passphrase = encodePassphrase.value || '';
+                const filenameBytes = new TextEncoder().encode(filenameEstimate).length;
+                const headerOverhead = HEADER_BASE_SIZE + filenameBytes;
+                const totalDataSize = headerOverhead + payloadSize + (passphrase ? GCM_TAG_BYTES : 0);
+
+                const percentage = capacity > 0 ? Math.min(100, (totalDataSize / capacity) * 100) : 0;
+                const pct = Math.min(100, percentage);
+
+                capacityBarFill.style.width = `${pct}%`;
+                capacityPercentage.textContent = `${pct.toFixed(1)}%`;
+
+                if (pct < 50) {
+                    capacityBarFill.style.background = 'var(--emerald)';
+                    capacityPercentage.style.color = 'var(--emerald-light)';
+                } else if (pct < 80) {
+                    capacityBarFill.style.background = 'var(--amber)';
+                    capacityPercentage.style.color = 'var(--amber)';
+                } else {
+                    capacityBarFill.style.background = pct >= 100 ? 'var(--rose)' : 'var(--amber)';
+                    capacityPercentage.style.color = pct >= 100 ? 'var(--rose)' : 'var(--amber)';
+                }
+
+                if (totalDataSize > capacity) {
+                    capacityDetail.textContent =
+                        `⚠️ Payload ${formatBytes(totalDataSize)} exceeds ${formatBytes(capacity)} available. Cover image too small!`;
+                    capacityDetail.style.color = 'var(--rose)';
+                } else {
+                    capacityDetail.textContent =
+                        `Payload: ${formatBytes(totalDataSize)} / ${formatBytes(capacity)} available • ${formatBytes(capacity - totalDataSize)} free`;
+                    capacityDetail.style.color = 'var(--text-muted)';
+                }
+            }
+
+            // Debounced capacity update for textarea
+            let capacityUpdateTimeout;
+            secretTextarea.addEventListener('input', () => {
+                clearTimeout(capacityUpdateTimeout);
+                capacityUpdateTimeout = setTimeout(updateCapacityMeter, 200);
+            });
+            encodePassphrase.addEventListener('input', () => {
+                clearTimeout(capacityUpdateTimeout);
+                capacityUpdateTimeout = setTimeout(updateCapacityMeter, 200);
+                // Update strength meter
+                const strength = calculatePasswordStrength(encodePassphrase.value);
+                passStrengthBar.className = `strength-bar level-${strength.level}`;
+                passStrengthBar.style.width = `${strength.level * 20}%`;
+                passStrengthLabel.textContent = strength.label;
+                passStrengthLabel.style.color = strength.level >= 4 ? 'var(--emerald)' : strength.level >= 2 ?
+                    'var(--amber)' : 'var(--rose)';
+            });
+
+            // ============================================
+            // GLOBAL DRAG-AND-DROP PROTECTION
+            // ============================================
+            document.addEventListener('dragover', (e) => e.preventDefault());
+            document.addEventListener('drop', (e) => e.preventDefault());
+
+            // ============================================
+            // INITIALIZATION
+            // ============================================
+            function init() {
+                // Set initial mode styles
+                modeTextBtn.style.background = 'rgba(6,182,212,0.12)';
+                modeTextBtn.style.borderColor = 'rgba(6,182,212,0.3)';
+                modeTextBtn.style.color = 'var(--cyan)';
+
+                // Set initial density state
+                density1Btn.classList.add('active');
+                density1Btn.setAttribute('aria-checked', 'true');
+
+                // Initial button states
+                updateEncodeButtonState();
+                updateDecodeButtonState();
+                updateCapacityMeter();
+
+                // Initial pass strength
+                passStrengthBar.style.width = '0%';
+                passStrengthLabel.textContent = '—';
+
+                console.log('StegoVault initialized — 100% client-side, zero server requests.');
+            }
+
+            // Run initialization after DOM ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', init);
+            } else {
+                init();
+            }
+
+        })();
+    </script>
+</body>
+</html>
