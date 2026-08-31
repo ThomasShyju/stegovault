@@ -1704,7 +1704,13 @@
                     coverDropzone.classList.add('has-file');
                     coverDropzone.classList.remove('has-error');
                     coverPreview.classList.remove('hidden');
-                    coverThumb.src = URL.createObjectURL(file);
+
+  if (coverThumb.dataset.prevUrl) URL.revokeObjectURL(coverThumb.dataset.prevUrl);
+const objectUrl = URL.createObjectURL(file);
+coverThumb.dataset.prevUrl = objectUrl;
+coverThumb.src = objectUrl;
+                    
+                    
                     coverDims.textContent = formatDimensions(result.width, result.height);
                     const cap1 = calculateCapacity(result.width, result.height, 1);
                     const cap2 = calculateCapacity(result.width, result.height, 2);
